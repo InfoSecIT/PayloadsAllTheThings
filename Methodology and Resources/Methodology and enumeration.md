@@ -8,6 +8,7 @@
   * The Harvester
 
 * [Active Recon](#active-recon)
+  * Masscan
   * Nmap
   * Nmap Script
   * RPCClient
@@ -46,6 +47,13 @@
   ```
 
 ## Active recon
+
+* Masscan
+
+```powershell
+masscan -iL ips-online.txt --rate 10000 -p1-65535 --only-open -oL masscan.out
+masscan -e tun0 -p1-65535,U:1-65535 10.10.10.97 --rate 1000
+```
 
 * Basic NMAP
 
@@ -167,6 +175,18 @@
   index: 0x7 Account: www-data Name: www-data Desc: (null)
   index: 0x8 Account: root Name: root Desc: (null)
   ```  
+
+* Zone Transfer
+
+  ```powershell
+  host -t ns domain.local
+  domain.local name server master.domain.local.
+
+  host master.domain.local        
+  master.domain.local has address 192.168.1.1
+ 
+  dig axfr domain.local @192.168.1.1
+  ```
 
 ## List all the subdirectories and files
 
